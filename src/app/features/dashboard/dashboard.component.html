@@ -3,21 +3,71 @@
     <div>
       <p class="eyebrow">TrackLink</p>
       <h1>Dashboard</h1>
+      @if (user()?.email) {
+        <p class="user-email">{{ user()?.email }}</p>
+      }
     </div>
-    <button type="button" (click)="logout()" [disabled]="isLoggingOut()">
+    <button type="button" class="secondary-button" (click)="logout()" [disabled]="isLoggingOut()">
       {{ isLoggingOut() ? 'Saindo...' : 'Sair' }}
     </button>
   </header>
 
-  @if (errorMessage()) {
-    <p class="error" role="alert">{{ errorMessage() }}</p>
+  @if (actionMessage()) {
+    <p class="notice" role="status">{{ actionMessage() }}</p>
   }
 
-  <section aria-labelledby="dashboard-summary">
-    <h2 id="dashboard-summary">Sessão autenticada</h2>
-    <p>Você está autenticado e pode acessar funcionalidades protegidas.</p>
-    @if (user()?.email) {
-      <p class="user-email">{{ user()?.email }}</p>
+  <section aria-labelledby="trackings-title">
+    <div class="section-header">
+      <div>
+        <h2 id="trackings-title">Meus trackings</h2>
+        <p>Visualize e gerencie seus compartilhamentos.</p>
+      </div>
+    </div>
+
+    @if (state() === 'loading') {
+      <p class="state-message" role="status">Carregando seus trackings...</p>
+    } @else if (state() === 'error') {
+      <div class="state-block" role="alert">
+        <p>{{ loadErrorMessage() }}</p>
+        <button type="button" (click)="loadTrackings()">Tentar novamente</button>
+      </div>
+    } @else if (trackings().length === 0) {
+      <p class="state-message">Você ainda não possui trackings.</p>
+    } @else {
+      <div class="tracking-list" role="list">
+        @for (tracking of trackings(); track tracking.token) {
+          @let status = derivedStatus(tracking);
+          <article class="tracking-item" role="listitem">
+            <div class="tracking-main">
+              <span class="status" [class.active]="status === 'active'" [class.inactive]="status === 'inactive'" [class.expired]="status === 'expired'">
+                {{ statusLabel(status) }}
+              </span>
+              <h3>{{ shortToken(tracking.token) }}</h3>
+              <dl>
+                <div>
+                  <dt>Atualizado em</dt>
+                  <dd>{{ tracking.updatedAt | date: 'short' }}</dd>
+                </div>
+                <div>
+                  <dt>Expira em</dt>
+                  <dd>{{ tracking.expiresAt | date: 'short' }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="tracking-actions">
+              <button type="button" class="secondary-button" (click)="openTracking(tracking)">
+                Acessar
+              </button>
+              @if (status === 'active') {
+                <button type="button" class="danger-button" (click)="endTracking(tracking)" [disabled]="isEnding(tracking.token)">
+                  {{ isEnding(tracking.token) ? 'Encerrando...' : 'Encerrar' }}
+                </button>
+              }
+            </div>
+          </article>
+        }
+      </div>
     }
   </section>
 </main>
