@@ -1,0 +1,23 @@
+<main class="dashboard-page">
+  <header>
+    <div>
+      <p class="eyebrow">TrackLink</p>
+      <h1>Dashboard</h1>
+    </div>
+    <button type="button" (click)="logout()" [disabled]="isLoggingOut()">
+      {{ isLoggingOut() ? 'Saindo...' : 'Sair' }}
+    </button>
+  </header>
+
+  @if (errorMessage()) {
+    <p class="error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  <section aria-labelledby="dashboard-summary">
+    <h2 id="dashboard-summary">Sessão autenticada</h2>
+    <p>Você está autenticado e pode acessar funcionalidades protegidas.</p>
+    @if (user()?.email) {
+      <p class="user-email">{{ user()?.email }}</p>
+    }
+  </section>
+</main>

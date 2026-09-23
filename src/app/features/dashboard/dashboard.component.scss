@@ -1,0 +1,62 @@
+.dashboard-page {
+  margin: 0 auto;
+  max-width: 64rem;
+  padding: 2rem;
+}
+
+header {
+  align-items: center;
+  border-bottom: 1px solid #d7dde8;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.eyebrow,
+.user-email {
+  color: #4b5563;
+}
+
+button {
+  background: #1259c3;
+  border: 0;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.7rem 1rem;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.error {
+  color: #b42318;
+  margin-bottom: 1rem;
+}
+
+section {
+  background: #ffffff;
+  border: 1px solid #d7dde8;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
