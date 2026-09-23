@@ -1,0 +1,34 @@
+<main class="public-tracking-page">
+  <section class="tracking-header" aria-labelledby="public-tracking-title">
+    <p class="eyebrow">TrackLink</p>
+    <h1 id="public-tracking-title">Acompanhamento público</h1>
+    <p class="status-message" role="status">{{ message() }}</p>
+    @if (realtimeMessage()) {
+      <p class="realtime-message" role="status">{{ realtimeMessage() }}</p>
+    }
+    @if (historyErrorMessage()) {
+      <p class="history-message">{{ historyErrorMessage() }}</p>
+    }
+  </section>
+
+  @if (state() === 'loading' || state() === 'active' || state() === 'ended') {
+    <section class="map-section" aria-label="Mapa do tracking">
+      <div #mapContainer class="map-container"></div>
+    </section>
+  }
+
+  @if (tracking()) {
+    <section class="tracking-details" aria-label="Detalhes do tracking">
+      <dl>
+        <div>
+          <dt>Atualizado em</dt>
+          <dd>{{ tracking()?.updatedAt | date:'short' }}</dd>
+        </div>
+        <div>
+          <dt>Expira em</dt>
+          <dd>{{ tracking()?.expiresAt | date:'short' }}</dd>
+        </div>
+      </dl>
+    </section>
+  }
+</main>

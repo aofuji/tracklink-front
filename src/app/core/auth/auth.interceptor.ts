@@ -1,9 +1,11 @@
-import { HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { API_BASE_URL } from '../api/api.config';
 import { AuthService } from './auth.service';
+
+export const SKIP_AUTH = new HttpContextToken<boolean>(() => false);
 
 const SKIP_REFRESH_ENDPOINTS = [
   '/api/auth/login',
@@ -38,7 +40,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
 };
 
 function attachAccessToken(request: HttpRequest<unknown>, accessToken: string | null, apiBaseUrl: string): HttpRequest<unknown> {
-  if (!accessToken || !isApiRequest(request.url, apiBaseUrl) || isAuthMutationEndpoint(request.url)) {
+  if (request.context.get(SKIP_AUTH) || !accessToken || !isApiRequest(request.url, apiBaseUrl) || isAuthMutationEndpoint(request.url)) {
     return request;
   }
 
@@ -52,6 +54,7 @@ function attachAccessToken(request: HttpRequest<unknown>, accessToken: string | 
 function shouldRefresh(error: unknown, request: HttpRequest<unknown>): error is HttpErrorResponse {
   return error instanceof HttpErrorResponse
     && error.status === 401
+    && !request.context.get(SKIP_AUTH)
     && !wasRetried(request)
     && !isAuthMutationEndpoint(request.url);
 }

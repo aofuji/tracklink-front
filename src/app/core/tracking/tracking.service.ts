@@ -1,8 +1,15 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../api/api.config';
-import { CreateTrackingResponse, TrackingLocationPayload, TrackingSummary } from './tracking.models';
+import { SKIP_AUTH } from '../auth/auth.interceptor';
+import {
+  CreateTrackingResponse,
+  PublicTracking,
+  TrackingHistoryLocation,
+  TrackingLocationPayload,
+  TrackingSummary,
+} from './tracking.models';
 
 @Injectable({ providedIn: 'root' })
 export class TrackingService {
@@ -11,6 +18,18 @@ export class TrackingService {
 
   getMyTrackings(): Observable<TrackingSummary[]> {
     return this.http.get<TrackingSummary[]>(this.url('/api/tracking/my'));
+  }
+
+  getPublicTracking(token: string): Observable<PublicTracking> {
+    return this.http.get<PublicTracking>(this.url(`/api/tracking/${encodeURIComponent(token)}`), {
+      context: this.publicContext(),
+    });
+  }
+
+  getPublicTrackingHistory(token: string): Observable<TrackingHistoryLocation[]> {
+    return this.http.get<TrackingHistoryLocation[]>(this.url(`/api/tracking/${encodeURIComponent(token)}/history`), {
+      context: this.publicContext(),
+    });
   }
 
   createTracking(payload: TrackingLocationPayload): Observable<CreateTrackingResponse> {
@@ -23,6 +42,10 @@ export class TrackingService {
 
   endTracking(token: string): Observable<void> {
     return this.http.delete<void>(this.url(`/api/tracking/${encodeURIComponent(token)}`));
+  }
+
+  private publicContext(): HttpContext {
+    return new HttpContext().set(SKIP_AUTH, true);
   }
 
   private url(path: string): string {

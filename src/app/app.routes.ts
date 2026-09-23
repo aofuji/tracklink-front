@@ -18,6 +18,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/location-sharing/location-sharing.component').then((m) => m.LocationSharingComponent),
   },
   {
+    path: 'tracking/:token',
+    loadComponent: () => import('./features/public-tracking/public-tracking.component').then((m) => m.PublicTrackingComponent),
+  },
+  {
     path: 'dashboard',
     canActivate: [authGuard],
     loadComponent: () => import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),

@@ -52,6 +52,49 @@ describe('TrackingService', () => {
     expect(result).toEqual(response);
   });
 
+  it('loads public tracking without credentials', () => {
+    const response = {
+      token: 'public-token',
+      isActive: true,
+      latitude: -23.5,
+      longitude: -46.6,
+      updatedAt: '2026-09-23T12:00:00Z',
+      expiresAt: '2026-09-24T12:00:00Z',
+    };
+    let result: unknown;
+
+    service.getPublicTracking('abc/123').subscribe((tracking) => {
+      result = tracking;
+    });
+
+    const request = http.expectOne(API_BASE + '/api/tracking/abc%2F123');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(false);
+    expect(request.request.headers.has('Authorization')).toBe(false);
+    request.flush(response);
+
+    expect(result).toEqual(response);
+  });
+
+  it('loads public tracking history without credentials', () => {
+    const response = [
+      { latitude: 1, longitude: 2, recordedAt: '2026-09-23T12:00:00Z' },
+    ];
+    let result: unknown;
+
+    service.getPublicTrackingHistory('abc/123').subscribe((history) => {
+      result = history;
+    });
+
+    const request = http.expectOne(API_BASE + '/api/tracking/abc%2F123/history');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(false);
+    expect(request.request.headers.has('Authorization')).toBe(false);
+    request.flush(response);
+
+    expect(result).toEqual(response);
+  });
+
   it('creates a tracking with latitude and longitude only', () => {
     let token: string | undefined;
 

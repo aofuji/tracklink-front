@@ -1,11 +1,11 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { API_BASE_URL } from '../api/api.config';
 import { AuthService } from './auth.service';
-import { authInterceptor } from './auth.interceptor';
+import { SKIP_AUTH, authInterceptor } from './auth.interceptor';
 
 const API_BASE = 'http://api.test';
 
@@ -44,6 +44,37 @@ describe('authInterceptor', () => {
     const request = http.expectOne(`${API_BASE}/api/tracking/my`);
     expect(request.request.headers.get('Authorization')).toBe('Bearer access-token');
     request.flush([]);
+  });
+
+  it('does not add bearer token to requests marked with SKIP_AUTH', () => {
+    authService.setAccessToken('access-token');
+
+    httpClient.get(API_BASE + '/api/tracking/public-token', {
+      context: new HttpContext().set(SKIP_AUTH, true),
+    }).subscribe();
+
+    const request = http.expectOne(API_BASE + '/api/tracking/public-token');
+    expect(request.request.headers.has('Authorization')).toBe(false);
+    request.flush({});
+  });
+
+  it('does not refresh or redirect after 401 on requests marked with SKIP_AUTH', () => {
+    authService.setAccessToken('access-token');
+    let failed = false;
+
+    httpClient.get(API_BASE + '/api/tracking/public-token', {
+      context: new HttpContext().set(SKIP_AUTH, true),
+    }).subscribe({
+      error: () => {
+        failed = true;
+      },
+    });
+
+    http.expectOne(API_BASE + '/api/tracking/public-token').flush({}, { status: 401, statusText: 'Unauthorized' });
+
+    expect(failed).toBe(true);
+    http.expectNone(API_BASE + '/api/auth/refresh');
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('refreshes after a 401 and retries the original request once', () => {

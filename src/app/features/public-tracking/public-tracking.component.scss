@@ -1,0 +1,75 @@
+.public-tracking-page {
+  display: grid;
+  gap: 1rem;
+  min-height: 100vh;
+  padding: 1rem;
+  background: #f7f8fa;
+  color: #18202f;
+}
+
+.tracking-header,
+.tracking-details {
+  width: min(100%, 960px);
+  margin: 0 auto;
+}
+
+.eyebrow {
+  margin: 0 0 0.25rem;
+  color: #526070;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.status-message,
+.realtime-message,
+.history-message {
+  margin: 0.5rem 0 0;
+}
+
+.realtime-message,
+.history-message {
+  color: #5d6675;
+}
+
+.map-section {
+  width: min(100%, 960px);
+  margin: 0 auto;
+}
+
+.map-container {
+  min-height: 420px;
+  height: min(68vh, 640px);
+  border: 1px solid #d8dee8;
+}
+
+.tracking-details dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  margin: 0;
+}
+
+.tracking-details dt {
+  color: #526070;
+  font-size: 0.8rem;
+}
+
+.tracking-details dd {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+}
+
+:host ::ng-deep .public-tracking-marker span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: #d92d20;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
+}
