@@ -48,6 +48,10 @@ como requisições autenticadas.
 
 O tracking criado MUST pertencer ao usuário autenticado.
 
+A autenticação, inclusão de Bearer token, refresh token e tratamento
+global de sessão continuam sendo responsabilidade da infraestrutura
+definida em `specs/authentication.md`.
+
 ## Comportamentos Esperados
 
 ### Acesso autenticado
@@ -70,9 +74,28 @@ permissão de geolocalização do navegador.
 O frontend MUST tratar a ausência de suporte à Geolocation API no
 navegador.
 
+A posição inicial MUST ser obtida utilizando:
+
+```text
+navigator.geolocation.getCurrentPosition()
+```
+
+As chamadas à Geolocation API MUST usar as seguintes opções:
+
+```ts
+enableHighAccuracy: true
+timeout: 10000
+maximumAge: 5000
+```
+
 Se a permissão for negada, revogada, perdida ou não puder ser obtida,
-o frontend MUST informar que o compartilhamento não pode continuar com
-localização ativa.
+o frontend MUST informar com mensagem específica e segura que a
+permissão de localização foi negada ou está indisponível.
+
+Permissão de geolocalização negada MUST impedir a criação do tracking.
+
+Quando a permissão for negada, o frontend SHOULD permitir que o
+usuário tente novamente após ajustar a permissão no navegador.
 
 O frontend MUST NOT criar um tracking apenas com permissão concedida.
 A criação depende também de uma posição inicial válida.
@@ -80,7 +103,7 @@ A criação depende também de uma posição inicial válida.
 ### Obtenção da posição inicial
 
 Antes de chamar `POST /api/tracking`, o frontend MUST obter uma posição
-inicial válida do navegador.
+inicial válida do navegador usando `getCurrentPosition()`.
 
 Um tracking MUST NOT ser criado se uma posição inicial válida não
 puder ser obtida.
@@ -93,11 +116,24 @@ Latitude e longitude iniciais MUST ser enviadas ao criar o tracking:
 POST /api/tracking
 ```
 
-O formato exato do payload de criação é `TBD`, exceto pela obrigação de
-incluir latitude e longitude.
+O payload de criação MUST enviar somente os campos suportados pelo
+contrato atual do backend:
+
+```json
+{
+  "latitude": 0,
+  "longitude": 0
+}
+```
+
+O frontend MUST NOT adicionar `accuracy`, timestamp ou outros campos
+ao payload de criação sem suporte explícito do backend.
 
 Erros da Geolocation API durante a obtenção da posição inicial MUST
 ser tratados antes de qualquer tentativa de criação do tracking.
+
+Timeout ou indisponibilidade temporária da localização antes da criação
+MUST impedir a criação e MUST gerar mensagem específica e segura.
 
 ### Criação do tracking
 
@@ -113,16 +149,37 @@ em `specs/authentication.md`.
 Se a criação for bem-sucedida, o frontend MUST manter o token público
 retornado pela API para esse tracking.
 
+Com o contrato conhecido no projeto, a resposta de criação MUST conter
+pelo menos o campo `token`. Nenhum outro campo de resposta deve ser
+assumido pelo frontend sem suporte explícito do backend.
+
 O token retornado pela API MUST ser usado nas atualizações e no
 encerramento do mesmo tracking.
+
+Após criação bem-sucedida, o frontend MUST manter o usuário em uma
+tela ou estado de compartilhamento ativo, sem mapa.
 
 Se `POST /api/tracking` falhar, o frontend MUST NOT apresentar o
 tracking como criado ou ativo.
 
+O frontend MUST NOT fazer retry automático de `POST /api/tracking`.
+
 ### Acompanhamento da posição
 
-Após uma criação bem-sucedida, o frontend SHOULD acompanhar novas
-posições do navegador enquanto o compartilhamento estiver ativo.
+Após uma criação bem-sucedida, o frontend MUST acompanhar novas
+posições do navegador enquanto o compartilhamento estiver ativo usando:
+
+```text
+navigator.geolocation.watchPosition()
+```
+
+O watcher MUST usar as mesmas opções definidas para a Geolocation API:
+
+```ts
+enableHighAccuracy: true
+timeout: 10000
+maximumAge: 5000
+```
 
 Enquanto o compartilhamento estiver ativo, novas posições válidas do
 navegador devem poder atualizar o tracking usando:
@@ -140,8 +197,24 @@ conforme definido em `specs/authentication.md`.
 O frontend MUST NOT tentar atualizar um tracking quando não houver
 token mantido para ele.
 
-O frontend MUST impedir múltiplos fluxos locais concorrentes para o
-mesmo compartilhamento.
+O frontend MUST permitir somente um fluxo local de compartilhamento
+ativo por vez.
+
+O frontend MUST limpar o watcher ao finalizar o fluxo de
+compartilhamento ou destruir a tela responsável.
+
+O funcionamento em background é best effort: o frontend MUST NOT
+prometer atualizações contínuas quando o navegador ou o sistema
+operacional suspender a execução.
+
+O frontend MUST NOT pausar deliberadamente o compartilhamento em
+resposta a `visibilitychange`.
+
+O frontend MUST NOT persistir o tracking ativo em `localStorage` ou
+`sessionStorage` no MVP.
+
+Após reload da aplicação, fechamento de aba ou reabertura do navegador,
+o frontend MUST NOT retomar automaticamente o watcher anterior.
 
 ### Atualização da API
 
@@ -155,13 +228,42 @@ PUT /api/tracking/{token}
 A atualização MUST enviar latitude e longitude da posição a ser
 registrada.
 
-O formato exato do payload de atualização é `TBD`, exceto pela
-obrigação de incluir latitude e longitude.
+O payload de atualização MUST enviar somente os campos suportados pelo
+contrato atual do backend:
+
+```json
+{
+  "latitude": 0,
+  "longitude": 0
+}
+```
+
+O frontend MUST NOT adicionar `accuracy`, timestamp ou outros campos
+ao payload de atualização sem suporte explícito do backend.
+
+O frontend MUST NOT enviar cada callback recebido de `watchPosition()`.
+
+O frontend MUST enviar uma nova posição quando pelo menos uma das
+seguintes condições for satisfeita:
+
+- houver deslocamento de pelo menos 10 metros desde a última posição
+  enviada com sucesso;
+- tiverem passado pelo menos 10 segundos desde o último envio.
 
 Se `PUT /api/tracking/{token}` falhar, o frontend MUST tratar a falha e
 MUST NOT apresentar essa atualização como concluída.
 
-A política de retry para falhas de atualização é `TBD`.
+Se `PUT /api/tracking/{token}` falhar por erro temporário, o frontend
+MUST NOT encerrar automaticamente o tracking. Uma posição futura que
+satisfaça os critérios de envio pode tentar atualizar novamente.
+
+Se `PUT /api/tracking/{token}` indicar que o tracking não existe, está
+inativo ou está expirado, o frontend MUST parar o watcher e informar
+que o compartilhamento não está mais ativo.
+
+Timeout ou indisponibilidade temporária da Geolocation API durante um
+compartilhamento já criado MUST NOT encerrar automaticamente o
+tracking.
 
 ### Encerramento
 
@@ -179,12 +281,23 @@ a criação.
 O frontend MUST NOT tentar encerrar um compartilhamento quando não
 houver token mantido para o tracking.
 
+O frontend MUST NOT fazer retry automático de
+`DELETE /api/tracking/{token}`.
+
+Ao encerrar com sucesso, o frontend MUST limpar o watcher e finalizar
+o estado local de compartilhamento ativo.
+
 Depois de encerrado, o frontend MUST parar de enviar novas posições
 para esse tracking.
 
-Se `DELETE /api/tracking/{token}` falhar, o frontend MUST informar que
-o compartilhamento não foi encerrado e MUST NOT apresentar o
-encerramento como concluído.
+Se `DELETE /api/tracking/{token}` retornar que o tracking não foi
+encontrado, o frontend MUST limpar o watcher, finalizar o fluxo local e
+informar com mensagem específica e segura que o tracking não foi
+encontrado.
+
+Se `DELETE /api/tracking/{token}` falhar por outro motivo, o frontend
+MUST informar que o compartilhamento não foi encerrado e MUST NOT
+apresentar o encerramento como concluído.
 
 ## Estados e Erros
 
@@ -201,11 +314,11 @@ O frontend MUST representar estados coerentes para:
 - falha ao atualizar localização;
 - encerramento em andamento;
 - compartilhamento encerrado;
+- tracking não encontrado, inativo ou expirado durante atualização;
 - falha ao encerrar compartilhamento.
 
 O frontend MUST tratar erros da Geolocation API, incluindo falhas de
-permissão, indisponibilidade de posição e timeout quando aplicável ao
-método de captura escolhido.
+permissão, indisponibilidade de posição e timeout.
 
 O frontend MUST tratar perda ou negação da permissão de localização
 durante um compartilhamento ativo.
@@ -222,31 +335,23 @@ Se a API responder que a sessão não é válida ou não está autorizada,
 o frontend MUST aplicar o comportamento de sessão definido em
 `specs/authentication.md`.
 
+Mensagens ao usuário MUST ser específicas e seguras para:
+
+- permissão de localização negada;
+- localização indisponível;
+- timeout ao obter localização;
+- falha de criação do tracking;
+- falha de atualização de localização;
+- tracking não encontrado, inativo ou expirado durante atualização;
+- falha de encerramento;
+- tracking não encontrado durante encerramento.
+
 Mensagens de erro MUST NOT expor tokens completos, stack traces ou
 detalhes internos da API.
 
 ## Dependências e Decisões Pendentes
 
-- TBD: intervalo ou frequência de atualização da localização.
-- TBD: uso de `watchPosition()` ou outra estratégia para acompanhar
-  mudanças de posição.
-- TBD: opções da Geolocation API, incluindo `enableHighAccuracy`,
-  `timeout` e `maximumAge`.
-- TBD: comportamento esperado quando o navegador estiver em
-  background.
-- TBD: política de retry para falhas de criação, atualização ou
-  encerramento.
-- TBD: distância mínima necessária para enviar uma nova posição.
-- TBD: persistência local do tracking ativo após reload, fechamento de
-  aba ou reabertura do navegador.
-- TBD: formato exato do payload de `POST /api/tracking`.
-- TBD: formato exato do payload de `PUT /api/tracking/{token}`.
-- TBD: formato exato da resposta de criação, além da obrigação de
-  retornar um token público.
-- TBD: destino ou tela exibida após criação bem-sucedida do tracking.
-- TBD: formato das mensagens apresentadas ao usuário.
-- TBD: comportamento de reconciliação quando o encerramento retornar
-  tracking não encontrado.
+Não há decisões pendentes nesta especificação.
 
 ## Fora de Escopo
 
@@ -267,4 +372,5 @@ Esta especificação não define:
 - endpoints adicionais;
 - SignalR, WebSocket ou atualização em tempo real para espectadores;
 - compartilhamento com destinatários específicos;
-- expiração automática do tracking.
+- expiração automática do tracking;
+- persistência local do tracking ativo no MVP.
