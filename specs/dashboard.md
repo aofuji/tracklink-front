@@ -39,11 +39,10 @@ para encerrar um tracking ativo pertencente ao usuario autenticado.
 O Dashboard MUST ser acessivel somente para usuarios autenticados.
 
 Quando um usuario nao autenticado tentar acessar o Dashboard, o
-frontend MUST redireciona-lo para:
-
-```text
-/login
-```
+frontend MUST aplicar o comportamento definido em
+`specs/authentication.md`, incluindo redirecionamento para `/login` e
+preservacao de `returnUrl` quando a rota solicitada for uma rota
+interna valida.
 
 O Dashboard MUST NOT implementar uma logica independente de
 autenticacao. Ele MUST depender do comportamento definido em
@@ -76,15 +75,36 @@ distinguir entre:
 - tracking inativo;
 - tracking expirado.
 
-Com o contrato atual do backend, a classificacao SHOULD considerar:
+Com o contrato atual do backend, a classificacao MUST considerar:
 
-- tracking ativo: `isActive` verdadeiro e `expiresAt` posterior ao
-  horario atual;
 - tracking inativo: `isActive` falso;
-- tracking expirado: `expiresAt` igual ou anterior ao horario atual.
+- tracking expirado: `isActive` verdadeiro e `expiresAt` igual ou
+  anterior ao horario atual;
+- tracking ativo: `isActive` verdadeiro e `expiresAt` posterior ao
+  horario atual.
 
-Quando um tracking puder ser classificado como inativo e expirado ao
-mesmo tempo, a precedencia de exibicao do estado ainda e `TBD`.
+Quando `isActive` for falso, o estado visual/comportamental MUST ser
+inativo, mesmo que `expiresAt` tambem esteja no passado.
+
+O Dashboard MUST exibir o estado derivado do tracking na lista.
+
+### Campos exibidos
+
+No MVP, cada item da lista de trackings MUST exibir:
+
+- estado derivado;
+- token de forma abreviada;
+- `updatedAt`;
+- `expiresAt`;
+- acoes permitidas para aquele tracking.
+
+O Dashboard MUST NOT exibir latitude ou longitude na lista.
+
+O Dashboard MUST NOT exibir `createdAt` se esse campo nao fizer parte
+do contrato existente retornado pela API.
+
+O Dashboard MUST NOT implementar funcionalidade de copiar link publico
+nesta feature.
 
 ### Novo compartilhamento
 
@@ -105,7 +125,17 @@ a partir da lista de trackings carregada.
 O identificador usado para acesso SHOULD ser o `token` retornado pela
 API.
 
-O destino exato ao acessar um tracking existente e `TBD`.
+Ao acessar um tracking existente, o Dashboard MUST navegar para a
+pagina publica:
+
+```text
+/tracking/:token
+```
+
+O `:token` usado na rota MUST ser o token do tracking selecionado.
+
+A implementacao da pagina publica `/tracking/:token` pertence a
+`specs/public-tracking.md` e MUST NOT ser criada nesta feature.
 
 ### Encerramento de tracking
 
@@ -123,55 +153,56 @@ O frontend MUST NOT permitir a tentativa de encerramento quando nao
 houver um token disponivel para o tracking.
 
 Quando o encerramento for concluido com sucesso, o Dashboard MUST
-atualizar o estado exibido para que o tracking nao continue aparecendo
-como ativo.
+recarregar a lista utilizando:
 
-A estrategia de atualizacao apos encerramento e `TBD`: a aplicacao
-pode recarregar a lista via `GET /api/tracking/my` ou atualizar o
-estado localmente, desde que a exibicao final fique consistente com a
-API.
+```http
+GET /api/tracking/my
+```
+
+A lista recarregada MUST ser usada para atualizar o estado exibido, de
+forma que o tracking nao continue aparecendo como ativo quando a API
+indicar outro estado.
 
 ## Estados e Erros
 
-O Dashboard MUST apresentar um estado de loading enquanto os trackings
-do usuario estiverem sendo carregados.
+O Dashboard MUST apresentar uma mensagem especifica e segura de
+loading enquanto os trackings do usuario estiverem sendo carregados.
 
 Quando `GET /api/tracking/my` retornar uma lista vazia, o Dashboard
-MUST apresentar um estado de lista vazia.
+MUST apresentar uma mensagem especifica e segura de lista vazia.
 
-Se a carga dos trackings falhar, o Dashboard MUST apresentar um estado
-de erro e MUST permitir que o usuario tente carregar novamente.
+Se a carga dos trackings falhar, o Dashboard MUST apresentar uma
+mensagem especifica e segura de falha ao carregar e MUST permitir que
+o usuario tente carregar novamente por meio de uma acao "Tentar
+novamente".
 
 Se a API responder que a sessao nao e valida ou nao esta autorizada,
-o frontend MUST aplicar o comportamento de sessao definido em
-`specs/authentication.md`.
+o frontend MUST aplicar o comportamento global de sessao definido em
+`specs/authentication.md`. Erros `401` continuam sendo
+responsabilidade do fluxo global de autenticacao.
 
 Durante o encerramento de um tracking, o Dashboard SHOULD evitar
 multiplas tentativas simultaneas de encerramento para o mesmo token.
 
 Se `DELETE /api/tracking/{token}` falhar, o Dashboard MUST informar
-que o tracking nao foi encerrado e MUST NOT exibir o encerramento como
-concluido.
+com mensagem especifica e segura que o tracking nao foi encerrado e
+MUST NOT exibir o encerramento como concluido.
 
 Se `DELETE /api/tracking/{token}` retornar que o tracking nao foi
-encontrado, a mensagem e a estrategia de reconciliacao da lista ainda
-sao `TBD`.
+encontrado, o Dashboard MUST apresentar uma mensagem especifica e
+segura informando que o tracking nao foi encontrado e MUST recarregar
+a lista via `GET /api/tracking/my` para reconciliar a exibicao com o
+backend.
+
+Quando `DELETE /api/tracking/{token}` retornar tracking nao encontrado,
+o Dashboard MUST NOT assumir que o tracking foi encerrado.
 
 Mensagens de erro MUST NOT expor tokens completos, stack traces ou
 detalhes internos da API.
 
 ## Dependências e Decisões Pendentes
 
-- TBD: destino exato ao acessar um tracking existente.
-- TBD: precedencia visual/comportamental quando um tracking estiver
-  inativo e expirado ao mesmo tempo.
-- TBD: estrategia de atualizacao apos encerramento: recarregar a lista
-  ou atualizar estado localmente.
-- TBD: mensagem e reconciliacao da lista quando o encerramento retornar
-  tracking nao encontrado.
-- TBD: formato das mensagens apresentadas ao usuario.
-- TBD: quais campos de tracking, alem de estado e token, devem ser
-  exibidos no Dashboard.
+Nao ha decisoes pendentes nesta especificacao.
 
 ## Fora de Escopo
 
@@ -188,4 +219,6 @@ Esta especificacao nao define:
 - captura, permissao ou envio de localizacao;
 - atualizacao em tempo real;
 - mapa;
-- comportamento detalhado da pagina publica de tracking.
+- comportamento detalhado da pagina publica de tracking;
+- implementacao da pagina publica `/tracking/:token`;
+- copia de link publico.
