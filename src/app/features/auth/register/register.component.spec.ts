@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
@@ -45,7 +46,16 @@ describe('RegisterComponent', () => {
     expect(component.form.controls.email.touched).toBe(true);
   });
 
-  it('shows a safe error message when registration fails', () => {
+  it('shows a specific message when the email is already registered', () => {
+    authService.register.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409 })));
+    component.form.setValue({ name: 'Ana', email: 'ana@example.com', password: 'secret1' });
+
+    component.submit();
+
+    expect(component.errorMessage()).toBe('Este email já está cadastrado.');
+  });
+
+  it('shows a safe generic error message for other registration failures', () => {
     authService.register.mockReturnValue(throwError(() => new Error('stack trace')));
     component.form.setValue({ name: 'Ana', email: 'ana@example.com', password: 'secret1' });
 

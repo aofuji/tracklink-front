@@ -27,6 +27,18 @@ describe('LoginComponent', () => {
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
   });
 
+  it('does not show session expired message on normal login access', () => {
+    expect(component.errorMessage()).toBeNull();
+  });
+
+  it('shows a session expired message from controlled navigation query', () => {
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/login?sessionExpired=1&returnUrl=%2Fdashboard');
+    fixture = TestBed.createComponent(LoginComponent);
+    component = fixture.componentInstance;
+
+    expect(component.errorMessage()).toBe('Sua sessão expirou. Entre novamente.');
+  });
+
   it('submits credentials and redirects to dashboard by default', () => {
     authService.login.mockReturnValue(of(null));
     component.form.setValue({ email: 'ana@example.com', password: 'secret' });
@@ -38,8 +50,8 @@ describe('LoginComponent', () => {
     expect(component.isSubmitting()).toBe(false);
   });
 
-  it('uses a safe internal returnUrl after login', async () => {
-    await router.navigateByUrl('/login?returnUrl=%2Fdashboard');
+  it('uses a safe internal returnUrl after login, including after session expiration', async () => {
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/login?sessionExpired=1&returnUrl=%2Fdashboard');
     authService.login.mockReturnValue(of(null));
     component.form.setValue({ email: 'ana@example.com', password: 'secret' });
 

@@ -21,7 +21,7 @@ export class LoginComponent {
     password: ['', [Validators.required]],
   });
   readonly isSubmitting = signal(false);
-  readonly errorMessage = signal<string | null>(null);
+  readonly errorMessage = signal<string | null>(this.initialErrorMessage());
   canSubmit(): boolean {
     return this.form.valid && !this.isSubmitting();
   }
@@ -45,6 +45,11 @@ export class LoginComponent {
         this.errorMessage.set('Não foi possível entrar. Verifique suas credenciais e tente novamente.');
       },
     });
+  }
+
+  private initialErrorMessage(): string | null {
+    const queryParams = this.router.parseUrl(this.router.url).queryParams;
+    return queryParams['sessionExpired'] === '1' ? 'Sua sessão expirou. Entre novamente.' : null;
   }
 
   private getSafeReturnUrl(): string {

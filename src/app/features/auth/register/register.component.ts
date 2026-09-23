@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -41,9 +42,17 @@ export class RegisterComponent {
       next: () => {
         void this.router.navigate(['/login']);
       },
-      error: () => {
-        this.errorMessage.set('Não foi possível criar a conta. Verifique os dados e tente novamente.');
+      error: (error: unknown) => {
+        this.errorMessage.set(this.registrationErrorMessage(error));
       },
     });
+  }
+
+  private registrationErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse && error.status === 409) {
+      return 'Este email já está cadastrado.';
+    }
+
+    return 'Não foi possível criar a conta. Verifique os dados e tente novamente.';
   }
 }

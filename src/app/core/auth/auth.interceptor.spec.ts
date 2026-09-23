@@ -13,10 +13,10 @@ describe('authInterceptor', () => {
   let httpClient: HttpClient;
   let http: HttpTestingController;
   let authService: AuthService;
-  let router: { navigate: ReturnType<typeof vi.fn> };
+  let router: { navigate: ReturnType<typeof vi.fn>; url: string };
 
   beforeEach(() => {
-    router = { navigate: vi.fn() };
+    router = { navigate: vi.fn(), url: '/' };
 
     TestBed.configureTestingModule({
       providers: [
@@ -71,6 +71,22 @@ describe('authInterceptor', () => {
     });
 
     http.expectOne(API_BASE + '/api/tracking/public-token').flush({}, { status: 401, statusText: 'Unauthorized' });
+
+    expect(failed).toBe(true);
+    http.expectNone(API_BASE + '/api/auth/refresh');
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('does not refresh or redirect with session expired when a 401 request had no bearer token', () => {
+    let failed = false;
+
+    httpClient.get(API_BASE + '/api/protected').subscribe({
+      error: () => {
+        failed = true;
+      },
+    });
+
+    http.expectOne(API_BASE + '/api/protected').flush({}, { status: 401, statusText: 'Unauthorized' });
 
     expect(failed).toBe(true);
     http.expectNone(API_BASE + '/api/auth/refresh');
@@ -137,7 +153,7 @@ describe('authInterceptor', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('ends the session when refresh fails', () => {
+  it('ends the session with an expired-session redirect when refresh fails', () => {
     authService.setAccessToken('old-token');
     let failed = false;
 
@@ -153,6 +169,18 @@ describe('authInterceptor', () => {
     expect(failed).toBe(true);
     expect(authService.accessToken()).toBeNull();
     expect(authService.status()).toBe('anonymous');
-    expect(router.navigate).toHaveBeenCalledWith(['/login']);
+    expect(router.navigate).toHaveBeenCalledWith(['/login'], { queryParams: { sessionExpired: '1' } });
+  });
+
+  it('preserves the current internal returnUrl when redirecting after refresh failure', () => {
+    authService.setAccessToken('old-token');
+    router.url = '/dashboard';
+
+    httpClient.get(API_BASE + '/api/protected').subscribe({ error: () => undefined });
+
+    http.expectOne(API_BASE + '/api/protected').flush({}, { status: 401, statusText: 'Unauthorized' });
+    http.expectOne(API_BASE + '/api/auth/refresh').flush({}, { status: 401, statusText: 'Unauthorized' });
+
+    expect(router.navigate).toHaveBeenCalledWith(['/login'], { queryParams: { sessionExpired: '1', returnUrl: '/dashboard' } });
   });
 });

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { API_BASE_URL } from '../api/api.config';
 import { AuthService } from './auth.service';
+import { isInternalReturnUrl } from './auth.utils';
 
 export const SKIP_AUTH = new HttpContextToken<boolean>(() => false);
 
@@ -31,7 +32,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
         switchMap((accessToken) => next(markRetried(attachAccessToken(request, accessToken, apiBaseUrl)))),
         catchError((refreshError: unknown) => {
           authService.endSession();
-          void router.navigate(['/login']);
+          void router.navigate(['/login'], { queryParams: sessionExpiredQueryParams(router.url) });
           return throwError(() => refreshError);
         }),
       );
@@ -54,9 +55,20 @@ function attachAccessToken(request: HttpRequest<unknown>, accessToken: string | 
 function shouldRefresh(error: unknown, request: HttpRequest<unknown>): error is HttpErrorResponse {
   return error instanceof HttpErrorResponse
     && error.status === 401
+    && request.headers.has('Authorization')
     && !request.context.get(SKIP_AUTH)
     && !wasRetried(request)
     && !isAuthMutationEndpoint(request.url);
+}
+
+function sessionExpiredQueryParams(currentUrl: string): { sessionExpired: string; returnUrl?: string } {
+  const queryParams: { sessionExpired: string; returnUrl?: string } = { sessionExpired: '1' };
+
+  if (isInternalReturnUrl(currentUrl) && currentUrl !== '/' && !currentUrl.startsWith('/login') && !currentUrl.startsWith('/register')) {
+    queryParams.returnUrl = currentUrl;
+  }
+
+  return queryParams;
 }
 
 function isApiRequest(url: string, apiBaseUrl: string): boolean {
