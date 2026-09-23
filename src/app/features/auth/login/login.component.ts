@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -22,7 +22,9 @@ export class LoginComponent {
   });
   readonly isSubmitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
-  readonly canSubmit = computed(() => this.form.valid && !this.isSubmitting());
+  canSubmit(): boolean {
+    return this.form.valid && !this.isSubmitting();
+  }
 
   submit(): void {
     this.errorMessage.set(null);
