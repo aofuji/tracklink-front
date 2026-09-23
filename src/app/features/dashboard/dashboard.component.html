@@ -22,6 +22,9 @@
         <h2 id="trackings-title">Meus trackings</h2>
         <p>Visualize e gerencie seus compartilhamentos.</p>
       </div>
+      <button type="button" class="secondary-button" (click)="newSharing()">
+        Novo compartilhamento
+      </button>
     </div>
 
     @if (state() === 'loading') {

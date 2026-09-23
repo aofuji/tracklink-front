@@ -1,0 +1,50 @@
+<main class="sharing-page">
+  <section class="sharing-panel" aria-labelledby="sharing-title">
+    <p class="eyebrow">TrackLink</p>
+    <h1 id="sharing-title">Compartilhamento de localização</h1>
+    <p class="status-message" role="status">{{ message() }}</p>
+
+    @if (token()) {
+      <dl class="tracking-info">
+        <div>
+          <dt>Token</dt>
+          <dd>{{ token() }}</dd>
+        </div>
+      </dl>
+    }
+
+    @if (lastSyncedPosition()) {
+      <p class="sync-info">Última posição confirmada pela API.</p>
+    }
+
+    @if (state() === 'starting') {
+      <p class="state-box">Solicitando localização e preparando o compartilhamento...</p>
+    }
+
+    @if (state() === 'active') {
+      <div class="state-box active">
+        <p>Compartilhamento ativo.</p>
+        @if (isUpdating()) {
+          <p>Atualizando localização...</p>
+        }
+      </div>
+      <button type="button" class="danger-button" (click)="endSharing()" [disabled]="isEnding()">
+        {{ isEnding() ? 'Encerrando...' : 'Encerrar compartilhamento' }}
+      </button>
+    }
+
+    @if (state() === 'error') {
+      <div class="state-box error" role="alert">
+        <p>O compartilhamento não está ativo.</p>
+        <button type="button" (click)="retry()">Tentar novamente</button>
+      </div>
+    }
+
+    @if (state() === 'ended') {
+      <div class="state-box">
+        <p>Fluxo local finalizado.</p>
+        <a routerLink="/dashboard">Voltar ao Dashboard</a>
+      </div>
+    }
+  </section>
+</main>

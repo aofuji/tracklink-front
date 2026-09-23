@@ -49,6 +49,10 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  newSharing(): void {
+    void this.router.navigate(['/tracking/new']);
+  }
+
   openTracking(tracking: TrackingSummary): void {
     if (!tracking.token) {
       return;

@@ -52,6 +52,38 @@ describe('TrackingService', () => {
     expect(result).toEqual(response);
   });
 
+  it('creates a tracking with latitude and longitude only', () => {
+    let token: string | undefined;
+
+    service.createTracking({ latitude: 1, longitude: 2 }).subscribe((response) => {
+      token = response.token;
+    });
+
+    const request = http.expectOne(`${API_BASE}/api/tracking`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ latitude: 1, longitude: 2 });
+    expect(Object.keys(request.request.body)).toEqual(['latitude', 'longitude']);
+    request.flush({ token: 'public-token' });
+
+    expect(token).toBe('public-token');
+  });
+
+  it('updates a tracking with latitude and longitude only', () => {
+    let completed = false;
+
+    service.updateTracking('abc/123', { latitude: 3, longitude: 4 }).subscribe(() => {
+      completed = true;
+    });
+
+    const request = http.expectOne(`${API_BASE}/api/tracking/abc%2F123`);
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ latitude: 3, longitude: 4 });
+    expect(Object.keys(request.request.body)).toEqual(['latitude', 'longitude']);
+    request.flush(null);
+
+    expect(completed).toBe(true);
+  });
+
   it('ends a tracking by token', () => {
     let completed = false;
 

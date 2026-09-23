@@ -195,4 +195,12 @@ describe('DashboardComponent', () => {
 
     expect(trackingService.endTracking).not.toHaveBeenCalled();
   });
+  it('navigates to the new location sharing flow', async () => {
+    await createComponent([]);
+
+    component.newSharing();
+
+    expect(router.navigate).toHaveBeenCalledWith(['/tracking/new']);
+  });
+
 });
