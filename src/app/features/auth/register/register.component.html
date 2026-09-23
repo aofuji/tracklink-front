@@ -25,7 +25,7 @@
         <input type="password" formControlName="password" autocomplete="new-password" />
       </label>
       @if (form.controls.password.touched && form.controls.password.invalid) {
-        <p class="field-error">Informe uma senha com pelo menos 6 caracteres.</p>
+        <p class="field-error">Informe uma senha com pelo menos 8 caracteres.</p>
       }
 
       @if (errorMessage()) {

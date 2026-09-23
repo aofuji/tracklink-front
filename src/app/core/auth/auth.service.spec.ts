@@ -62,13 +62,13 @@ describe('AuthService', () => {
   it('registers a new user', () => {
     let completed = false;
 
-    service.register({ name: 'Ana', email: 'ana@example.com', password: 'secret1' }).subscribe(() => {
+    service.register({ name: 'Ana', email: 'ana@example.com', password: 'secret12' }).subscribe(() => {
       completed = true;
     });
 
     const request = http.expectOne(`${API_BASE}/api/auth/register`);
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ name: 'Ana', email: 'ana@example.com', password: 'secret1' });
+    expect(request.request.body).toEqual({ name: 'Ana', email: 'ana@example.com', password: 'secret12' });
     request.flush(null);
 
     expect(completed).toBe(true);

@@ -30,11 +30,11 @@ describe('RegisterComponent', () => {
 
   it('submits registration data and sends the user to login', () => {
     authService.register.mockReturnValue(of(undefined));
-    component.form.setValue({ name: 'Ana', email: 'ana@example.com', password: 'secret1' });
+    component.form.setValue({ name: 'Ana', email: 'ana@example.com', password: 'secret12' });
 
     component.submit();
 
-    expect(authService.register).toHaveBeenCalledWith({ name: 'Ana', email: 'ana@example.com', password: 'secret1' });
+    expect(authService.register).toHaveBeenCalledWith({ name: 'Ana', email: 'ana@example.com', password: 'secret12' });
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
     expect(component.isSubmitting()).toBe(false);
   });
@@ -46,9 +46,26 @@ describe('RegisterComponent', () => {
     expect(component.form.controls.email.touched).toBe(true);
   });
 
+
+  it('requires at least 8 password characters', () => {
+    const password = component.form.controls.password;
+
+    password.setValue('1234567');
+    password.markAsTouched();
+    fixture.detectChanges();
+
+    expect(password.invalid).toBe(true);
+    expect(password.errors?.['minlength']).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('Informe uma senha com pelo menos 8 caracteres.');
+
+    password.setValue('12345678');
+
+    expect(password.valid).toBe(true);
+  });
+
   it('shows a specific message when the email is already registered', () => {
     authService.register.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409 })));
-    component.form.setValue({ name: 'Ana', email: 'ana@example.com', password: 'secret1' });
+    component.form.setValue({ name: 'Ana', email: 'ana@example.com', password: 'secret12' });
 
     component.submit();
 
@@ -57,7 +74,7 @@ describe('RegisterComponent', () => {
 
   it('shows a safe generic error message for other registration failures', () => {
     authService.register.mockReturnValue(throwError(() => new Error('stack trace')));
-    component.form.setValue({ name: 'Ana', email: 'ana@example.com', password: 'secret1' });
+    component.form.setValue({ name: 'Ana', email: 'ana@example.com', password: 'secret12' });
 
     component.submit();
 
