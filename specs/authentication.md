@@ -13,11 +13,21 @@ A autenticação do frontend deve contemplar:
 - registro de usuário;
 - login;
 - manutenção da sessão autenticada;
-- envio do JWT access token para endpoints protegidos;
-- renovação da sessão utilizando refresh token;
+- recebimento e uso do JWT access token para endpoints protegidos;
+- renovação da sessão utilizando refresh token armazenado pelo backend
+  em cookie `HttpOnly`;
 - logout;
 - proteção de rotas privadas;
 - redirecionamento de usuários não autenticados.
+
+O access token será retornado ao Angular e mantido pelo frontend para
+autenticar requisições protegidas.
+
+O refresh token MUST NOT ser disponibilizado ao JavaScript.
+
+O frontend MUST NOT armazenar o refresh token em `localStorage`,
+`sessionStorage` ou qualquer outro armazenamento acessível por
+JavaScript.
 
 ## Comportamentos Esperados
 
@@ -40,8 +50,14 @@ O frontend MUST permitir autenticação utilizando:
 
 POST /api/auth/login
 
-Quando o login for realizado com sucesso, o frontend MUST receber
-e manter os tokens retornados pela API.
+Quando o login for realizado com sucesso, o frontend MUST receber e
+manter o access token retornado pela API.
+
+Quando o login for realizado com sucesso, o backend MUST armazenar o
+refresh token em cookie `HttpOnly`.
+
+O frontend MUST NOT receber, ler, persistir ou expor o valor do refresh
+token.
 
 Após autenticação bem-sucedida, o usuário MUST ser direcionado para:
 
@@ -59,10 +75,20 @@ Authorization: Bearer <access-token>
 A inclusão do access token SHOULD ser centralizada na infraestrutura
 HTTP da aplicação e não repetida manualmente em cada feature.
 
+O frontend MUST NOT usar o refresh token para autenticar manualmente
+requisições protegidas.
+
 ### Sessão
 
 O frontend MUST ser capaz de determinar se existe uma sessão
 autenticada.
+
+A sessão autenticada no frontend depende da disponibilidade de um
+access token válido ou da possibilidade de renovar a sessão usando o
+cookie `HttpOnly` do refresh token.
+
+A estratégia de persistência do access token no navegador ainda é
+`TBD`.
 
 As informações do usuário autenticado SHOULD ser obtidas da API
 quando necessário, utilizando:
@@ -79,9 +105,19 @@ mais válido, o frontend SHOULD tentar renovar a sessão utilizando:
 
 POST /api/auth/refresh
 
+A renovação da sessão MUST utilizar o refresh token armazenado pelo
+backend em cookie `HttpOnly`.
+
+O frontend MUST NOT enviar o refresh token em payload, header manual,
+query string ou qualquer outro canal acessível por JavaScript.
+
+A requisição de renovação MUST permitir o envio do cookie `HttpOnly`
+conforme o contrato do backend.
+
 Se a renovação for bem-sucedida:
 
-1. os novos tokens retornados pela API MUST substituir os anteriores;
+1. o novo access token retornado pela API MUST substituir o access
+   token anterior mantido pelo frontend;
 2. a requisição original SHOULD ser executada novamente.
 
 O frontend MUST NOT executar múltiplas renovações concorrentes para
@@ -95,11 +131,19 @@ MUST ser direcionado para `/login`.
 
 O frontend MUST permitir que o usuário encerre sua sessão.
 
-O refresh token atual MUST ser enviado para:
+O logout MUST solicitar ao backend a revogação do refresh token e a
+expiração ou remoção do cookie `HttpOnly`, utilizando:
 
 POST /api/auth/logout
 
-Após o logout, os dados locais da sessão MUST ser removidos.
+O frontend MUST NOT enviar o refresh token em payload, header manual,
+query string ou qualquer outro canal acessível por JavaScript.
+
+A requisição de logout MUST permitir o envio do cookie `HttpOnly`
+conforme o contrato do backend.
+
+Após o logout, os dados locais da sessão MUST ser removidos, incluindo
+o access token mantido pelo frontend.
 
 O usuário MUST ser direcionado para `/login`.
 
@@ -134,13 +178,15 @@ para:
 Durante o envio de login ou registro, o frontend MUST evitar múltiplos
 envios simultâneos da mesma operação.
 
-Mensagens apresentadas ao usuário MUST NOT expor tokens, detalhes
-internos da API, stack traces ou informações sensíveis.
+Mensagens apresentadas ao usuário MUST NOT expor access tokens,
+refresh tokens, detalhes internos da API, stack traces ou informações
+sensíveis.
 
 ## Dependências e Decisões Pendentes
 
 - TBD: estratégia de armazenamento do access token no navegador.
-- TBD: estratégia de armazenamento do refresh token no navegador.
+- TBD: atributos do cookie `HttpOnly` do refresh token, incluindo
+  `Secure`, `SameSite`, domínio, path e expiração.
 - TBD: comportamento de `/login` e `/register` quando o usuário já
   estiver autenticado.
 - TBD: preservação ou não da URL originalmente solicitada após o login.
