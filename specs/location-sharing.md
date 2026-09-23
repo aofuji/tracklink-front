@@ -85,6 +85,34 @@ Quando a futura rota pública `/tracking/:token` for adicionada,
 `/tracking/new` MUST ter precedência no roteamento para que `new` não
 seja interpretado como um token público.
 
+### Navegação de saída
+
+Enquanto existir um compartilhamento local ativo, a ação principal de
+saída da tela `/tracking/new` MUST ser "Encerrar compartilhamento".
+
+O frontend MUST NOT oferecer "Voltar ao Dashboard" durante um
+compartilhamento ativo, porque sair da tela destruiria o componente e
+interromperia o `watchPosition()` sem necessariamente encerrar o
+tracking no backend.
+
+Após o compartilhamento ser encerrado com sucesso, o frontend MUST
+exibir a ação "Voltar ao Dashboard", navegando para:
+
+```text
+/dashboard
+```
+
+Quando não houver tracking criado, por exemplo antes de iniciar o fluxo
+ou após uma falha de criação, o frontend MAY oferecer a ação "Voltar
+ao Dashboard".
+
+Quando `DELETE /api/tracking/{token}` retornar tracking não
+encontrado, como o fluxo local é finalizado, o frontend MUST oferecer a
+ação "Voltar ao Dashboard".
+
+Estas regras de navegação MUST NOT alterar a regra de cleanup do
+watcher definida nesta especificação.
+
 ### Permissão de localização
 
 Antes de criar um tracking, o frontend MUST solicitar ou obter
