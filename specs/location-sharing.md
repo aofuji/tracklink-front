@@ -66,6 +66,25 @@ o frontend MUST aplicar o comportamento de rotas e sessão definido em
 O fluxo de compartilhamento MUST NOT implementar uma lógica
 independente de autenticação.
 
+### Rota do fluxo
+
+A rota protegida para iniciar e manter o compartilhamento local MUST
+ser:
+
+```text
+/tracking/new
+```
+
+Essa rota MUST exigir autenticação e MUST usar o comportamento definido
+em `specs/authentication.md` para usuários não autenticados.
+
+O Dashboard MUST navegar para `/tracking/new` por meio da ação
+"Novo compartilhamento".
+
+Quando a futura rota pública `/tracking/:token` for adicionada,
+`/tracking/new` MUST ter precedência no roteamento para que `new` não
+seja interpretado como um token público.
+
 ### Permissão de localização
 
 Antes de criar um tracking, o frontend MUST solicitar ou obter
