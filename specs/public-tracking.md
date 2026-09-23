@@ -22,10 +22,14 @@ A página pública MUST permitir que um visitante:
 - consulte o estado e a localização inicial usando a API REST;
 - acompanhe atualizações em tempo real quando o tracking estiver
   ativo;
+- visualize a localização atual em mapa;
+- visualize o histórico disponível como rota no mapa;
 - veja quando o tracking estiver inativo, expirado, encerrado,
   indisponível ou não existir.
 
 A página pública MUST NOT exigir autenticação.
+
+A página pública MUST NOT usar `authGuard`.
 
 A página pública MUST NOT permitir operações exclusivas do
 proprietário, como atualizar localização, encerrar tracking ou alterar
@@ -38,6 +42,9 @@ GET /api/tracking/{token}
 GET /api/tracking/{token}/history
 ```
 
+Os GETs públicos MUST NOT depender de sessão autenticada, access token,
+refresh token ou refresh cookie.
+
 O frontend MUST usar o seguinte endpoint SignalR quando acompanhar um
 tracking ativo em tempo real:
 
@@ -45,20 +52,34 @@ tracking ativo em tempo real:
 /hubs/tracking
 ```
 
+A conexão SignalR pública MUST NOT depender de sessão autenticada,
+access token, refresh token ou refresh cookie.
+
 ## Comportamentos Esperados
 
-### Link público e token
+### Link público, rota e token
+
+A URL pública do tracking MUST ser:
+
+```text
+/tracking/:token
+```
 
 O token MUST ser obtido da rota pública.
 
-A URL pública definitiva ainda é `TBD`.
+A rota `/tracking/:token` MUST ser pública e MUST NOT usar
+`authGuard`.
+
+A rota protegida `/tracking/new` MUST permanecer registrada antes de
+`/tracking/:token`, para que `new` não seja interpretado como token
+público.
 
 O frontend MUST NOT exigir sessão autenticada, access token ou refresh
 token para carregar a página pública.
 
 Se a rota pública não fornecer um token utilizável, o frontend MUST
-tratar o acesso como inválido e MUST NOT tentar entrar em um grupo
-SignalR.
+tratar o acesso como inválido e MUST NOT consultar histórico nem tentar
+entrar em um grupo SignalR.
 
 ### Estado inicial via REST
 
@@ -71,30 +92,53 @@ GET /api/tracking/{token}
 
 Esse endpoint MUST ser tratado como público pelo frontend.
 
+O contrato atual de sucesso é:
+
+```http
+200 OK
+```
+
+```json
+{
+  "token": "string",
+  "latitude": 0,
+  "longitude": 0,
+  "updatedAt": "2026-09-23T00:00:00Z",
+  "isActive": true,
+  "expiresAt": "2026-09-24T00:00:00Z"
+}
+```
+
+O frontend MUST tratar os seguintes status definitivos:
+
+- `404 Not Found`: tracking não encontrado;
+- `409 Conflict`: tracking inativo ou encerrado;
+- `410 Gone`: tracking expirado.
+
 Um token inexistente MUST ser tratado como tracking não encontrado.
 
 Se a API retornar um tracking ativo, o frontend MUST apresentar a
-localização atual disponível e MUST poder iniciar o acompanhamento em
-tempo real via SignalR.
+localização atual disponível e MUST iniciar o acompanhamento em tempo
+real via SignalR.
 
 Tracking inativo ou expirado MUST NOT ser apresentado como
 compartilhamento ativo.
 
-Quando os dados retornados pela API permitirem, a classificação SHOULD
+Quando os dados retornados pela API permitirem, a classificação MUST
 seguir a mesma regra usada em `specs/dashboard.md`:
 
-- tracking ativo: `isActive` verdadeiro e `expiresAt` posterior ao
-  horário atual;
 - tracking inativo: `isActive` falso;
-- tracking expirado: `expiresAt` igual ou anterior ao horário atual.
+- tracking expirado: `isActive` verdadeiro e `expiresAt` igual ou
+  anterior ao horário atual;
+- tracking ativo: `isActive` verdadeiro e `expiresAt` posterior ao
+  horário atual.
 
-Quando um tracking puder ser classificado como inativo e expirado ao
-mesmo tempo, a precedência de exibição do estado ainda é `TBD`.
+Quando mais de uma condição puder ser inferida localmente, tracking
+inativo MUST ter precedência sobre tracking expirado.
 
 ### Histórico público
 
-O frontend SHOULD poder consultar o histórico público do tracking
-usando:
+O frontend SHOULD consultar o histórico público do tracking usando:
 
 ```http
 GET /api/tracking/{token}/history
@@ -102,18 +146,68 @@ GET /api/tracking/{token}/history
 
 Esse endpoint MUST ser tratado como público pelo frontend.
 
-A quantidade de histórico exibida é `TBD`.
+O frontend MUST carregar o histórico somente depois que
+`GET /api/tracking/{token}` confirmar um tracking válido e ativo.
 
-O desenho ou não da rota completa é `TBD`.
+O contrato atual de sucesso é:
 
-Se o histórico falhar, o frontend MUST tratar a falha sem impedir
-necessariamente a exibição do estado atual quando `GET
-/api/tracking/{token}` tiver sido bem-sucedido.
+```http
+200 OK
+```
+
+```json
+[
+  {
+    "latitude": 0,
+    "longitude": 0,
+    "recordedAt": "2026-09-23T00:00:00Z"
+  }
+]
+```
+
+O histórico retornado pela API está ordenado por `recordedAt`
+crescente.
+
+No contrato atual, a API retorna todo o histórico disponível, sem
+paginação ou limite.
+
+O frontend MUST tratar os seguintes status definitivos para histórico:
+
+- `404 Not Found`: tracking não encontrado;
+- `409 Conflict`: tracking inativo ou encerrado;
+- `410 Gone`: tracking expirado.
+
+O frontend MUST desenhar o histórico disponível como uma polyline no
+mapa.
+
+Paginação ou limitação do histórico fica fora do escopo deste MVP.
+
+Se o histórico falhar por uma falha temporária, o frontend MUST tratar
+a falha sem impedir necessariamente a exibição do estado atual quando
+`GET /api/tracking/{token}` tiver sido bem-sucedido.
+
+### Mapa
+
+A página pública MUST usar Leaflet para renderização do mapa.
+
+A página pública MUST usar OpenStreetMap como provedor de mapa.
+
+O zoom inicial do mapa MUST ser 16.
+
+O mapa MUST exibir um marcador simples para a posição atual.
+
+Quando houver histórico disponível, o frontend MUST desenhar a rota
+como polyline.
+
+O marcador e a polyline MUST refletir somente localizações válidas
+confirmadas pela API REST ou por eventos SignalR válidos.
 
 ### Conexão SignalR
 
-Para tracking ativo, o frontend MUST poder acompanhar atualizações em
-tempo real através do SignalR.
+Para tracking ativo, o frontend MUST acompanhar atualizações em tempo
+real através do SignalR.
+
+O frontend MUST usar o cliente oficial `@microsoft/signalr`.
 
 Quando o acompanhamento em tempo real for iniciado, o frontend MUST
 conectar-se a:
@@ -132,7 +226,17 @@ JoinTracking(token)
 O frontend MUST NOT entrar em grupo SignalR quando o token estiver
 ausente, inválido, não encontrado, inativo ou expirado.
 
-A política de reconexão SignalR é `TBD`.
+O frontend MUST usar reconexão automática do cliente SignalR.
+
+Após `onreconnected`, o frontend MUST chamar `JoinTracking(token)`
+novamente.
+
+Ao destruir o componente responsável pela página pública, o frontend
+MUST parar a conexão SignalR.
+
+Falhas temporárias de conexão ou reconexão SignalR MUST ser
+diferenciadas dos estados definitivos de tracking não encontrado,
+inativo ou expirado.
 
 ### Atualizações em tempo real
 
@@ -144,15 +248,30 @@ LocationUpdated
 
 MUST atualizar a localização apresentada para o visitante.
 
-Uma atualização recebida via `LocationUpdated` MUST NOT ser apresentada
-como operação realizada pelo visitante público.
+O payload atual de `LocationUpdated` MUST ser tratado como:
+
+```json
+{
+  "token": "string",
+  "latitude": 0,
+  "longitude": 0,
+  "updatedAt": "2026-09-23T00:00:00Z",
+  "isActive": true,
+  "expiresAt": "2026-09-24T00:00:00Z"
+}
+```
+
+O frontend MUST ignorar `LocationUpdated` cujo `payload.token` seja
+diferente do token da página.
+
+Uma atualização recebida via `LocationUpdated` MUST NOT ser
+apresentada como operação realizada pelo visitante público.
 
 O frontend MUST tratar payloads de atualização inválidos ou
 incompletos sem substituir uma localização válida por dados inválidos.
 
-O formato exato do payload de `LocationUpdated` é `TBD`, exceto pela
-expectativa de conter dados suficientes para atualizar a localização
-apresentada.
+Cada `LocationUpdated` válido MUST mover o marcador para a nova
+posição e adicionar a localização à rota apresentada.
 
 ### Encerramento em tempo real
 
@@ -164,11 +283,21 @@ TrackingEnded
 
 MUST fazer a interface deixar de apresentar o tracking como ativo.
 
+O evento `TrackingEnded` não possui payload no contrato atual.
+
+Como a conexão participa somente do grupo correspondente ao token
+exibido, `TrackingEnded` MUST ser considerado referente ao tracking
+atual.
+
+Após receber `TrackingEnded`, o frontend MUST manter a última
+localização e a rota visíveis no mapa.
+
+Após receber `TrackingEnded`, o frontend MUST apresentar o tracking
+como encerrado e MUST desconectar do SignalR.
+
 Após receber `TrackingEnded`, o frontend MUST NOT continuar
 apresentando novas atualizações como parte de um compartilhamento
 ativo para esse token.
-
-O comportamento exato da conexão SignalR após `TrackingEnded` é `TBD`.
 
 ## Estados e Erros
 
@@ -178,19 +307,23 @@ A página pública MUST representar estados coerentes para:
 - carregamento do estado inicial;
 - tracking não encontrado;
 - tracking ativo;
-- tracking inativo;
+- tracking inativo ou encerrado;
 - tracking expirado;
 - carregamento de histórico, quando aplicável;
 - falha ao carregar histórico;
 - conexão SignalR em andamento;
 - conexão SignalR ativa;
-- falha de conexão SignalR;
+- falha temporária de conexão SignalR;
+- reconexão SignalR em andamento;
 - atualização em tempo real recebida;
-- tracking encerrado;
-- falha de comunicação com a API.
+- tracking encerrado por evento em tempo real;
+- falha temporária de comunicação com a API.
 
 Falhas em `GET /api/tracking/{token}` MUST ser tratadas e MUST NOT
 ser apresentadas como tracking ativo.
+
+Falhas temporárias de REST ou SignalR MUST ser diferenciadas dos
+estados definitivos de tracking não encontrado, inativo e expirado.
 
 Falhas na conexão SignalR MUST ser tratadas sem permitir que a
 interface afirme estar recebendo atualizações em tempo real quando a
@@ -201,34 +334,54 @@ o frontend SHOULD manter visível o último estado confirmado pela API
 ou pelo último evento válido recebido, indicando que o acompanhamento
 em tempo real não está disponível.
 
-Se `LocationUpdated` ou `TrackingEnded` for recebido para um token que
-não corresponde ao tracking exibido, o frontend MUST ignorar o evento.
+Após `TrackingEnded`, o frontend MUST preservar a última localização
+e rota no mapa.
 
 Mensagens de erro MUST NOT expor tokens completos, stack traces ou
 detalhes internos da API.
 
+As mensagens apresentadas ao visitante MUST ser curtas, seguras e
+específicas em português. O MVP MUST usar mensagens equivalentes a:
+
+- carregamento: "Carregando tracking...";
+- não encontrado: "Tracking não encontrado.";
+- encerrado ou inativo: "Este tracking foi encerrado.";
+- expirado: "Este tracking expirou.";
+- falha de carregamento: "Não foi possível carregar o tracking.";
+- falha em tempo real: "Atualizações em tempo real indisponíveis.";
+- reconexão em tempo real: "Reconectando atualizações em tempo real...".
+
 ## Dependências e Decisões Pendentes
 
-- TBD: URL pública definitiva do tracking.
-- TBD: biblioteca de mapas.
-- TBD: provedor de mapas.
-- TBD: nível de zoom.
-- TBD: aparência do marcador.
-- TBD: política de reconexão SignalR.
-- TBD: quantidade de histórico exibida.
-- TBD: desenho ou não da rota completa.
-- TBD: formato visual dos estados de erro.
-- TBD: precedência visual/comportamental quando um tracking estiver
-  inativo e expirado ao mesmo tempo.
-- TBD: formato exato do payload de `GET /api/tracking/{token}`.
-- TBD: formato exato do payload de
-  `GET /api/tracking/{token}/history`.
-- TBD: formato exato do payload de `LocationUpdated`.
-- TBD: formato exato do payload de `TrackingEnded`.
-- TBD: comportamento da conexão SignalR após `TrackingEnded`.
-- TBD: estratégia para validar se um evento SignalR recebido pertence
-  ao token exibido, caso o payload do evento não inclua o token.
-- TBD: formato das mensagens apresentadas ao visitante.
+Não há decisões pendentes nesta especificação.
+
+Decisões registradas:
+
+- URL pública: `/tracking/:token`.
+- A rota pública não usa `authGuard`.
+- `/tracking/new` deve permanecer antes de `/tracking/:token`.
+- Mapa: Leaflet.
+- Provedor de mapa: OpenStreetMap.
+- Zoom inicial: 16.
+- Marcador: simples para posição atual.
+- Histórico disponível: desenhado como polyline.
+- Histórico no MVP: todo o histórico retornado pela API, sem paginação
+  ou limite no frontend.
+- SignalR: cliente oficial `@microsoft/signalr`.
+- SignalR: reconexão automática.
+- SignalR: `JoinTracking(token)` após conectar e após
+  `onreconnected`.
+- `LocationUpdated` contém token e deve ser ignorado quando o token
+  divergir da página.
+- `TrackingEnded` não possui payload e é considerado referente ao
+  tracking atual porque a conexão participa somente do grupo do token
+  exibido.
+- Após `TrackingEnded`, a última localização e rota permanecem
+  visíveis e a conexão SignalR deve ser encerrada.
+- Inativo tem precedência sobre expirado quando ambas as condições
+  puderem ser inferidas localmente.
+- GETs públicos e conexão SignalR pública não dependem de sessão ou
+  refresh cookie.
 
 ## Fora de Escopo
 
@@ -249,4 +402,5 @@ Esta especificação não define:
 - persistência local de dados públicos;
 - compartilhamento social do link;
 - permissões de geolocalização do visitante público;
-- edição visual de mapa, marcador ou rota.
+- paginação ou limitação de histórico no MVP;
+- edição visual avançada de mapa, marcador ou rota.
