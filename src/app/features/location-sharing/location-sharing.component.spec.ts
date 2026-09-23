@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { Coordinates, GeolocationFailure } from '../../core/geolocation/geolocation.models';
 import { GeolocationService } from '../../core/geolocation/geolocation.service';
@@ -50,6 +51,7 @@ describe('LocationSharingComponent', () => {
       imports: [LocationSharingComponent],
       providers: [
         LocationSharingSessionService,
+        provideRouter([]),
         { provide: GeolocationService, useValue: geolocationService },
         { provide: TrackingService, useValue: trackingService },
       ],
@@ -65,6 +67,16 @@ describe('LocationSharingComponent', () => {
     initialPosition$.complete();
   }
 
+  function visibleText(): string {
+    fixture.detectChanges();
+    return fixture.nativeElement.textContent;
+  }
+
+  function dashboardLink(): HTMLAnchorElement | null {
+    fixture.detectChanges();
+    return fixture.nativeElement.querySelector('a');
+  }
+
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-23T00:00:00Z'));
@@ -74,6 +86,25 @@ describe('LocationSharingComponent', () => {
     fixture?.destroy();
     TestBed.resetTestingModule();
     vi.useRealTimers();
+  });
+
+  it('shows the dashboard return action before a tracking exists', async () => {
+    await createComponent();
+
+    expect(visibleText()).toContain('Voltar ao Dashboard');
+  });
+
+  it('does not show the dashboard return action while sharing is active', async () => {
+    await createComponent();
+    activateSharing();
+
+    expect(visibleText()).not.toContain('Voltar ao Dashboard');
+  });
+
+  it('points the dashboard return action to /dashboard', async () => {
+    await createComponent();
+
+    expect(dashboardLink()?.getAttribute('href')).toBe('/dashboard');
   });
 
   it('gets an initial position before creating tracking and then starts watching', async () => {
@@ -192,6 +223,7 @@ describe('LocationSharingComponent', () => {
     watchSuccess(atLeastTenMeters);
 
     expect(component.state()).toBe('ended');
+    expect(visibleText()).toContain('Voltar ao Dashboard');
     expect(geolocationService.clearWatch).toHaveBeenCalledWith(77);
     expect(component.message()).toContain('não está mais ativo');
   });
@@ -204,6 +236,7 @@ describe('LocationSharingComponent', () => {
 
     expect(trackingService.endTracking).toHaveBeenCalledWith('tracking-token');
     expect(component.state()).toBe('ended');
+    expect(visibleText()).toContain('Voltar ao Dashboard');
     expect(geolocationService.clearWatch).toHaveBeenCalledWith(77);
   });
 
@@ -216,6 +249,7 @@ describe('LocationSharingComponent', () => {
 
     expect(component.state()).toBe('ended');
     expect(component.message()).toContain('não foi encontrado');
+    expect(visibleText()).toContain('Voltar ao Dashboard');
     expect(geolocationService.clearWatch).toHaveBeenCalledWith(77);
   });
 

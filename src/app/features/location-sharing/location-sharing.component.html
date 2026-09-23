@@ -43,8 +43,11 @@
     @if (state() === 'ended') {
       <div class="state-box">
         <p>Fluxo local finalizado.</p>
-        <a routerLink="/dashboard">Voltar ao Dashboard</a>
       </div>
+    }
+
+    @if (canReturnToDashboard()) {
+      <a routerLink="/dashboard">Voltar ao Dashboard</a>
     }
   </section>
 </main>

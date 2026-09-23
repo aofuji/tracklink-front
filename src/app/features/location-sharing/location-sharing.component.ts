@@ -36,6 +36,7 @@ export class LocationSharingComponent implements OnInit, OnDestroy {
   readonly state = signal<SharingState>('starting');
   readonly message = signal('Preparando compartilhamento de localização...');
   readonly token = signal<string | null>(null);
+  readonly hasCreatedTracking = signal(false);
   readonly lastLocalPosition = signal<Coordinates | null>(null);
   readonly lastSyncedPosition = signal<Coordinates | null>(null);
   readonly isUpdating = signal(false);
@@ -85,6 +86,10 @@ export class LocationSharingComponent implements OnInit, OnDestroy {
     });
   }
 
+  canReturnToDashboard(): boolean {
+    return this.state() === 'ended' || (this.state() !== 'active' && !this.hasCreatedTracking());
+  }
+
   private start(): void {
     this.resetTransientState();
 
@@ -115,6 +120,7 @@ export class LocationSharingComponent implements OnInit, OnDestroy {
       next: (response) => {
         this.tokenValue = response.token;
         this.token.set(response.token);
+        this.hasCreatedTracking.set(true);
         this.lastConfirmedPosition = position;
         this.lastSuccessfulUpdateAt = Date.now();
         this.lastSyncedPosition.set(position);
@@ -263,6 +269,7 @@ export class LocationSharingComponent implements OnInit, OnDestroy {
     this.watchId = null;
     this.tokenValue = null;
     this.token.set(null);
+    this.hasCreatedTracking.set(false);
     this.lastConfirmedPosition = null;
     this.lastSuccessfulUpdateAt = null;
     this.pendingPosition = null;
