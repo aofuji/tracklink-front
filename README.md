@@ -1,31 +1,31 @@
 # TrackLink Web
 
-## Visão geral
+## Overview
 
-TrackLink é uma aplicação para compartilhar localização em tempo real por meio de links públicos de acompanhamento.
+TrackLink is an application for sharing real-time location through public tracking links.
 
-Este repositório contém o frontend Angular do TrackLink. Ele integra com a API ASP.NET Core TrackLink para autenticação, criação e gerenciamento de trackings, histórico de localização e atualizações em tempo real via SignalR.
+This repository contains the Angular frontend for TrackLink. It integrates with the TrackLink ASP.NET Core API for authentication, tracking creation and management, location history, and real-time updates through SignalR.
 
-## Funcionalidades atuais
+## Current Features
 
-- Registro e login de usuários.
-- Autenticação com JWT access token.
-- Refresh token mantido pelo backend em cookie `HttpOnly`.
-- Restauração de sessão após reload usando o endpoint de refresh.
-- Dashboard protegido com a lista de trackings do usuário autenticado.
-- Criação de novo compartilhamento de localização.
-- Uso da Geolocation API do navegador.
-- Atualização da posição durante um compartilhamento ativo.
-- Encerramento de tracking pelo proprietário.
-- Página pública `/tracking/:token` para acompanhamento sem autenticação.
-- Mapa com Leaflet e OpenStreetMap.
-- Exibição do histórico disponível como rota.
-- Atualizações em tempo real via SignalR.
-- Tratamento de tracking inexistente, encerrado/inativo e expirado.
+- User registration and login.
+- Authentication with a JWT access token.
+- Refresh token managed by the backend in an `HttpOnly` cookie.
+- Session restoration after reload through the refresh endpoint.
+- Protected dashboard with the authenticated user's tracking list.
+- Creation of new location shares.
+- Browser Geolocation API usage.
+- Position updates during an active share.
+- Tracking termination by the owner.
+- Public `/tracking/:token` page for unauthenticated tracking.
+- Map powered by Leaflet and OpenStreetMap.
+- Display of the available history as a route.
+- Real-time updates through SignalR.
+- Handling for missing, closed/inactive, and expired tracking sessions.
 
 ## Stack
 
-Versões declaradas em `package.json`:
+Versions declared in `package.json`:
 
 - Angular: `^22.1.0`
 - Angular CLI: `^22.1.6`
@@ -34,11 +34,11 @@ Versões declaradas em `package.json`:
 - Leaflet: `^1.9.4`
 - `@types/leaflet`: `^1.9.22`
 - `@microsoft/signalr`: `^10.0.11`
-- OpenStreetMap: usado como provedor de tiles do mapa
+- OpenStreetMap: used as the map tile provider
 
-## Arquitetura
+## Architecture
 
-Estrutura principal:
+Main structure:
 
 ```text
 src/app/
@@ -55,85 +55,85 @@ src/app/
     └── public-tracking/
 ```
 
-Resumo das responsabilidades:
+Responsibility summary:
 
-- `core/auth/`: estado de autenticação, guards, interceptor JWT, restauração de sessão e logout.
-- `core/geolocation/`: encapsulamento da Geolocation API e cálculo de distância.
-- `core/map/`: integração específica do mapa público com Leaflet.
-- `core/tracking/`: contratos, chamadas REST de tracking e integração SignalR.
-- `features/auth/`: telas de login e registro.
-- `features/dashboard/`: área protegida com trackings do usuário.
-- `features/location-sharing/`: fluxo local de criação e atualização de compartilhamento.
-- `features/public-tracking/`: página pública de acompanhamento por token.
+- `core/auth/`: authentication state, guards, JWT interceptor, session restoration, and logout.
+- `core/geolocation/`: Geolocation API wrapper and distance calculation.
+- `core/map/`: public map integration with Leaflet.
+- `core/tracking/`: contracts, tracking REST calls, and SignalR integration.
+- `features/auth/`: login and registration screens.
+- `features/dashboard/`: protected area with the user's tracking sessions.
+- `features/location-sharing/`: local creation and update flow for location sharing.
+- `features/public-tracking/`: public tracking page by token.
 
-## Rotas principais
+## Main Routes
 
-Rotas existentes em `src/app/app.routes.ts`:
+Routes defined in `src/app/app.routes.ts`:
 
-| Rota | Acesso | Descrição |
+| Route | Access | Description |
 | --- | --- | --- |
-| `/login` | Pública para usuários anônimos | Login |
-| `/register` | Pública para usuários anônimos | Registro |
-| `/dashboard` | Protegida | Lista e gerenciamento dos trackings do usuário |
-| `/tracking/new` | Protegida | Início e manutenção de um compartilhamento local |
-| `/tracking/:token` | Pública | Visualização pública de um tracking |
+| `/login` | Public for anonymous users | Login |
+| `/register` | Public for anonymous users | Registration |
+| `/dashboard` | Protected | List and management of the user's tracking sessions |
+| `/tracking/new` | Protected | Start and maintain a local location share |
+| `/tracking/:token` | Public | Public view of a tracking session |
 
-A rota `/tracking/new` deve permanecer antes de `/tracking/:token` para que `new` não seja interpretado como token público.
+The `/tracking/new` route must remain before `/tracking/:token` so `new` is not interpreted as a public token.
 
-## Autenticação
+## Authentication
 
-O frontend mantém o access token somente em memória durante a execução da aplicação. O token é anexado às requisições protegidas pelo interceptor HTTP como `Authorization: Bearer <access-token>`.
+The frontend keeps the access token only in memory while the application is running. The token is attached to protected requests by the HTTP interceptor as `Authorization: Bearer <access-token>`.
 
-O refresh token não é lido nem armazenado pelo Angular. Ele fica sob controle do backend em cookie `HttpOnly`. Após reload, o frontend tenta restaurar a sessão via `POST /api/auth/refresh`; em caso de sucesso, o novo access token volta a ser mantido em memória.
+The refresh token is not read or stored by Angular. It is controlled by the backend in an `HttpOnly` cookie. After a reload, the frontend attempts to restore the session through `POST /api/auth/refresh`; when successful, the new access token is kept in memory again.
 
-Tokens não são persistidos em `localStorage`, `sessionStorage` ou outro armazenamento acessível por JavaScript.
+Tokens are not persisted in `localStorage`, `sessionStorage`, or any other storage accessible from JavaScript.
 
-Os endpoints públicos de tracking usam opt-out explícito de autenticação no interceptor, para não dependerem de sessão autenticada, Bearer token, refresh ou redirect para login.
+Public tracking endpoints explicitly opt out of authentication in the interceptor, so they do not depend on an authenticated session, Bearer token, refresh, or login redirect.
 
-## Rastreamento
+## Tracking
 
-Fluxo geral:
+General flow:
 
 ```text
 Geolocation API
-→ REST API
-→ TrackLink backend
-→ SignalR
-→ página pública
-→ Leaflet
+-> REST API
+-> TrackLink backend
+-> SignalR
+-> public page
+-> Leaflet
 ```
 
-No compartilhamento local, o frontend obtém uma posição inicial com `getCurrentPosition()`, cria o tracking via REST e passa a acompanhar novas posições com `watchPosition()`.
+In local sharing, the frontend gets an initial position with `getCurrentPosition()`, creates the tracking session through REST, and then watches new positions with `watchPosition()`.
 
-A atualização para a API não envia cada callback do navegador. Uma nova posição é enviada quando houver deslocamento de pelo menos 10 metros desde a última posição confirmada pela API ou quando tiverem passado pelo menos 10 segundos desde o último envio confirmado.
+Updates sent to the API do not mirror every browser callback. A new position is sent when there is a movement of at least 10 meters from the last position confirmed by the API, or when at least 10 seconds have passed since the last confirmed update.
 
-A página pública carrega o estado atual via REST, carrega o histórico do tracking ativo, desenha a rota no Leaflet e acompanha novas posições via SignalR. Ao receber encerramento em tempo real, mantém a última localização e a rota visíveis.
+The public page loads the current state through REST, loads the active tracking history, draws the route in Leaflet, and listens for new positions through SignalR. When it receives a real-time termination event, it keeps the last location and route visible.
 
-## Como executar
+## Running Locally
 
-Instale as dependências:
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-Execute o servidor de desenvolvimento:
+Start the development server:
 
 ```bash
 npm start
 ```
 
-A aplicação Angular roda localmente no servidor do Angular CLI, normalmente em `http://localhost:4200/`.
+The Angular application runs locally on the Angular CLI server, usually at `http://localhost:4200/`.
 
-O backend TrackLink ASP.NET Core precisa estar disponível no endereço configurado em `src/app/core/api/api.config.ts`. Atualmente o frontend usa:
+The TrackLink ASP.NET Core backend must be available at the address configured in `src/app/core/api/api.config.ts`. The frontend currently uses:
 
 ```text
 http://localhost:5258
 ```
 
-## Testes
+## Tests
 
-Execute os testes unitários com o script real do projeto:
+Run the unit tests with the project's actual script:
 
 ```bash
 npm test
@@ -141,32 +141,32 @@ npm test
 
 ## Build
 
-Gere o build de produção com:
+Generate the production build with:
 
 ```bash
 npm run build
 ```
 
-Os artefatos são gerados em `dist/`.
+Artifacts are generated in `dist/`.
 
 ## Backend
 
-Este frontend depende da API TrackLink ASP.NET Core para:
+This frontend depends on the TrackLink ASP.NET Core API for:
 
-- registro, login, refresh, logout e usuário autenticado;
-- criação, atualização, listagem e encerramento de trackings;
-- consulta pública de tracking por token;
-- histórico público de localização;
-- hub SignalR `/hubs/tracking` para atualizações em tempo real.
+- registration, login, refresh, logout, and authenticated user data;
+- tracking creation, update, listing, and termination;
+- public tracking lookup by token;
+- public location history;
+- SignalR hub `/hubs/tracking` for real-time updates.
 
 ## Specs
 
-Os requisitos comportamentais das features ficam em `specs/`.
+Feature behavior requirements live in `specs/`.
 
-O projeto está sendo desenvolvido com abordagem Spec-Driven Development:
+The project is being developed with a Spec-Driven Development approach:
 
 ```text
-spec → plano → implementação → testes → validação contra a spec
+spec -> plan -> implementation -> tests -> validation against the spec
 ```
 
-As specs atuais cobrem autenticação, dashboard, compartilhamento de localização e visualização pública de tracking.
+The current specs cover authentication, dashboard, location sharing, and public tracking view.

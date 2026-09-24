@@ -1,16 +1,15 @@
 # TrackLink Frontend Specs
 
-Esta pasta contem as especificacoes comportamentais iniciais do frontend do TrackLink.
+This folder contains the initial behavior specifications for the TrackLink frontend.
 
-As specs sao a fonte de requisitos comportamentais do frontend. Elas devem orientar o desenvolvimento antes de qualquer implementacao Angular.
+The specs are the source of frontend behavior requirements. They should guide development before any Angular implementation work.
 
-O fluxo de desenvolvimento sera:
+The development flow is:
 
 ```text
-spec -> plano -> implementacao -> testes -> validacao contra a spec
+spec -> plan -> implementation -> tests -> validation against the spec
 ```
 
-Cada funcionalidade deve partir da respectiva spec, gerar um plano de implementacao, ser implementada, coberta por testes quando aplicavel e validada contra os requisitos definidos.
+Each feature should start from its corresponding spec, produce an implementation plan, be implemented, be covered by tests when applicable, and be validated against the defined requirements.
 
-Decisoes ainda nao tomadas devem permanecer marcadas como `TBD`.
-
+Decisions that have not been made yet should remain marked as `TBD`.
